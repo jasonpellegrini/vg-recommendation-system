@@ -3,6 +3,11 @@ from sklearn.preprocessing import MultiLabelBinarizer, MinMaxScaler
 from scipy.sparse import csr_matrix, hstack
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
+from sklearn.decomposition import PCA
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 
 # read dataset into pandas
 df = pd.read_csv("game_info.csv")
@@ -38,6 +43,46 @@ genres_sparse = csr_matrix(genres_df.values)
 
 feature_matrix = hstack([numerical_sparse, genres_sparse])
 
+###### Messing with PCA data vis
+
+pca = PCA(n_components=2)
+reduced_features = pca.fit_transform(feature_matrix.toarray())
+
+
+# Add PCA components to df
+df['PC1'] = reduced_features[:, 0]
+df['PC2'] = reduced_features[:, 1]
+
+# Pick a genre or rating to color by
+df['Genre'] = genres_df.idxmax(axis=1)  # dominant genre per row (just for visualization)
+
+plt.figure(figsize=(10, 7))
+sns.scatterplot(data=df, x='PC1', y='PC2', hue='Genre', palette='tab10', legend='full')
+plt.title("PCA of Games Colored by Dominant Genre")
+plt.show()
+
+# Numerical columns (from original df)
+numerical_cols = ["metacritic", "rating", "playtime", "achievements_count", 
+                  "ratings_count", "reviews_count", "suggestions_count"]
+
+# Genre columns (from the multilabel binarizer)
+genre_cols = mlb.classes_.tolist()
+
+# Combine both
+feature_names = numerical_cols + genre_cols
+
+# PCA loading inspection
+loadings = pd.DataFrame(pca.components_, columns=feature_names)
+
+print("Top contributors to PC1:")
+print(loadings.iloc[0].sort_values(ascending=False).head(10))
+
+print("\nTop contributors to PC2:")
+print(loadings.iloc[1].sort_values(ascending=False).head(10))
+
+
+#######################################
+
 # fit nearest neighbors model
 model = NearestNeighbors(metric='cosine', algorithm='brute')
 model.fit(feature_matrix)
@@ -53,5 +98,7 @@ def recommend(game_name, top_n=5):
     return df['name'].iloc[similar_indices]
 
 
-print(recommend("Terraria"))
+print(recommend("Call of Duty: Black Ops II"))
+
+
 
