@@ -1,0 +1,82 @@
+Graphs in the Project (with Explanations)
+1. PCA Scatter Plot
+
+What it does:
+
+    Displays a 2D projection of games based on their features (ratings, playtime, achievements, genres, etc.).
+
+    Each game is a point.
+
+    Points are colored by their dominant genre.
+
+Why it's important:
+
+    Shows how games naturally cluster based on their properties.
+
+    Reduces a complex, high-dimensional feature space into 2D for easier visualization.
+
+    PCA (Principal Component Analysis) finds the directions of maximum variance.
+
+Where the data comes from:
+
+    Generated from the feature matrix (which combines normalized numerical features + genre binary encoding).
+
+    PCA is fit on this matrix, and the first two principal components (PC1 and PC2) are plotted.
+
+2. Feature Correlation Matrix (Heatmap)
+
+What it does:
+
+    Shows correlations between the original numerical features (like ratings, playtime, achievements_count, etc).
+
+    High positive correlation = two features tend to grow together.
+
+    High negative correlation = as one feature grows, the other tends to shrink.
+
+Why it's important:
+
+    Identifies relationships between game attributes.
+
+    Helps explain redundancy or patterns in the data.
+
+    For example, games with more achievements might also have longer playtimes.
+
+Where the data comes from:
+
+    Built from the original normalized numerical features before combining with genre data.
+
+3. Feature Importance Bar Chart for PC1
+
+What it does:
+
+    Displays the top 10 features contributing the most to the first principal component (PC1).
+
+    PC1 captures the largest single axis of variance across all games.
+
+Why it's important:
+
+    Explains what PC1 actually measures — for instance, if playtime and achievements_count are big contributors, PC1 might be measuring "game content volume."
+
+    Helps users interpret the PCA scatterplot meaningfully.
+
+Where the data comes from:
+
+    The PCA component loadings for PC1, extracted from the PCA model after fitting.
+
+4. Feature Importance Bar Chart for PC2
+
+What it does:
+
+    Displays the top 10 features contributing the most to the second principal component (PC2).
+
+    PC2 captures the second most important axis of variance, orthogonal to PC1.
+
+Why it's important:
+
+    Shows another independent relationship in the data.
+
+    Helps build a richer interpretation: e.g., if PC2 is dominated by rating and reviews_count, it might measure game popularity independently from game length.
+
+Where the data comes from:
+
+    The PCA component loadings for PC2, taken from the second row of the PCA model.
