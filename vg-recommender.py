@@ -1,9 +1,14 @@
+import sys
 import pandas as pd
 from sklearn.preprocessing import MultiLabelBinarizer, MinMaxScaler
 from scipy.sparse import csr_matrix, hstack
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from sklearn.decomposition import PCA
+
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QListWidget
+)
 
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -43,45 +48,45 @@ genres_sparse = csr_matrix(genres_df.values)
 
 feature_matrix = hstack([numerical_sparse, genres_sparse])
 
-###### Messing with PCA data vis
+# ###### Messing with PCA data vis
 
-pca = PCA(n_components=2)
-reduced_features = pca.fit_transform(feature_matrix.toarray())
-
-
-# Add PCA components to df
-df['PC1'] = reduced_features[:, 0]
-df['PC2'] = reduced_features[:, 1]
-
-# Pick a genre or rating to color by
-df['Genre'] = genres_df.idxmax(axis=1)  # dominant genre per row (just for visualization)
-
-plt.figure(figsize=(10, 7))
-sns.scatterplot(data=df, x='PC1', y='PC2', hue='Genre', palette='tab10', legend='full')
-plt.title("PCA of Games Colored by Dominant Genre")
-plt.show()
-
-# Numerical columns (from original df)
-numerical_cols = ["metacritic", "rating", "playtime", "achievements_count", 
-                  "ratings_count", "reviews_count", "suggestions_count"]
-
-# Genre columns (from the multilabel binarizer)
-genre_cols = mlb.classes_.tolist()
-
-# Combine both
-feature_names = numerical_cols + genre_cols
-
-# PCA loading inspection
-loadings = pd.DataFrame(pca.components_, columns=feature_names)
-
-print("Top contributors to PC1:")
-print(loadings.iloc[0].sort_values(ascending=False).head(10))
-
-print("\nTop contributors to PC2:")
-print(loadings.iloc[1].sort_values(ascending=False).head(10))
+# pca = PCA(n_components=2)
+# reduced_features = pca.fit_transform(feature_matrix.toarray())
 
 
-#######################################
+# # Add PCA components to df
+# df['PC1'] = reduced_features[:, 0]
+# df['PC2'] = reduced_features[:, 1]
+
+# # Pick a genre or rating to color by
+# df['Genre'] = genres_df.idxmax(axis=1)  # dominant genre per row (just for visualization)
+
+# plt.figure(figsize=(10, 7))
+# sns.scatterplot(data=df, x='PC1', y='PC2', hue='Genre', palette='tab10', legend='full')
+# plt.title("PCA of Games Colored by Dominant Genre")
+# plt.show()
+
+# # Numerical columns (from original df)
+# numerical_cols = ["metacritic", "rating", "playtime", "achievements_count", 
+#                   "ratings_count", "reviews_count", "suggestions_count"]
+
+# # Genre columns (from the multilabel binarizer)
+# genre_cols = mlb.classes_.tolist()
+
+# # Combine both
+# feature_names = numerical_cols + genre_cols
+
+# # PCA loading inspection
+# loadings = pd.DataFrame(pca.components_, columns=feature_names)
+
+# print("Top contributors to PC1:")
+# print(loadings.iloc[0].sort_values(ascending=False).head(10))
+
+# print("\nTop contributors to PC2:")
+# print(loadings.iloc[1].sort_values(ascending=False).head(10))
+
+
+# #######################################
 
 # fit nearest neighbors model
 model = NearestNeighbors(metric='cosine', algorithm='brute')
@@ -91,14 +96,76 @@ model.fit(feature_matrix)
 indices = pd.Series(df.index, index=df['name'])
 
 # function to recommend
-def recommend(game_name, top_n=5):
+def recommend(game_name, preferred_platform=None, top_n=5):
     idx = indices[game_name]
-    distances, indices_result = model.kneighbors(feature_matrix[idx], n_neighbors=top_n+1)
+    distances, indices_result = model.kneighbors(feature_matrix[idx], n_neighbors=top_n+20)
+
     similar_indices = indices_result.flatten()[1:]  # skip the game itself
-    return df['name'].iloc[similar_indices]
+    candidates = df.iloc[similar_indices].copy()
+
+    if preferred_platform:
+        preferred_platform = preferred_platform.lower()
+
+        # boost score if platform matches
+        candidates['platform_match'] = candidates['platforms'].fillna('').apply(
+            lambda x: 1 if preferred_platform in x.lower() else 0
+        )
+
+        # sort first by platform match, then by original order
+        candidates = candidates.sort_values(by=['platform_match'], ascending=False)
+
+    return candidates['name'].head(top_n)
 
 
-print(recommend("Call of Duty: Black Ops II"))
+
+
+class RecommenderApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('Game Recommender')
+        self.resize(400, 300)
+        self.setStyleSheet("font-size: 16px;") 
+
+        layout = QVBoxLayout()
+
+        self.label = QLabel('Enter Game Name:')
+        layout.addWidget(self.label)
+
+        self.input_field = QLineEdit()
+        layout.addWidget(self.input_field)
+
+        self.platform_label = QLabel('Enter Preferred Platform (optional):')
+        layout.addWidget(self.platform_label)
+
+        self.platform_input = QLineEdit()
+        layout.addWidget(self.platform_input)
+
+
+        self.button = QPushButton('Recommend Similar Games')
+        self.button.clicked.connect(self.get_recommendations)
+        layout.addWidget(self.button)
+
+        self.result_list = QListWidget()
+        layout.addWidget(self.result_list)
+
+        self.setLayout(layout)
+
+
+    def get_recommendations(self):
+        game_name = self.input_field.text()
+        platform = self.platform_input.text()
+
+        recommendations = recommend(game_name, preferred_platform=platform if platform else None)
+        self.result_list.clear()
+        self.result_list.addItems(recommendations)
+
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = RecommenderApp()
+    window.show()
+    sys.exit(app.exec_())
 
 
 
