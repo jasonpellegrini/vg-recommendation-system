@@ -125,18 +125,30 @@ class RecommenderApp(QWidget):
         self.corr_tab = QWidget()
         self.feature_tab = QWidget()
         self.feature2_tab = QWidget()
+        self.rating_dist_tab = QWidget()
+        self.genre_count_tab = QWidget()
+        self.playtime_distribution_tab = QWidget()
+
 
         self.tabs.addTab(self.recommendation_tab, "Recommend")
         self.tabs.addTab(self.pca_tab, "PCA Scatter")
         self.tabs.addTab(self.corr_tab, "Correlation Matrix")
         self.tabs.addTab(self.feature_tab, "Feature Importance")
         self.tabs.addTab(self.feature2_tab, "Feature Importance PC2")
+        self.tabs.addTab(self.rating_dist_tab, "Rating Distribution")
+        self.tabs.addTab(self.genre_count_tab, "Top Genres")
+        self.tabs.addTab(self.playtime_distribution_tab, "Platform Distribution")
+
 
         self.init_recommendation_tab()
         self.init_pca_tab()
         self.init_corr_tab()
         self.init_feature_tab()
         self.init_feature2_tab()
+        self.init_rating_distribution_tab()
+        self.init_genre_count_tab()
+        self.init_playtime_distribution_tab()
+
 
         layout = QVBoxLayout()
         layout.addWidget(self.tabs)
@@ -194,6 +206,56 @@ class RecommenderApp(QWidget):
 
         layout.addWidget(canvas)
         self.corr_tab.setLayout(layout)
+
+    def init_rating_distribution_tab(self):
+        layout = QVBoxLayout()
+
+        fig, ax = plt.subplots(figsize=(7, 5))
+        sns.histplot(df['rating'], bins=20, kde=True, ax=ax)
+        ax.set_title("Distribution of Game Ratings")
+        ax.set_xlabel("Rating")
+        ax.set_ylabel("Number of Games")
+        canvas = FigureCanvas(fig)
+
+        layout.addWidget(canvas)
+        self.rating_dist_tab.setLayout(layout)
+
+    
+    def init_genre_count_tab(self):
+        layout = QVBoxLayout()
+
+        genre_counts = genres_df.sum().sort_values(ascending=False).head(15)
+
+        fig, ax = plt.subplots(figsize=(8, 5))
+        genre_counts.plot(kind='bar', ax=ax)
+        ax.set_title("Top 15 Genres by Game Count")
+        ax.set_ylabel("Number of Games")
+        ax.set_xlabel("Genre")
+        canvas = FigureCanvas(fig)
+
+        layout.addWidget(canvas)
+        self.genre_count_tab.setLayout(layout)
+
+    
+    def init_playtime_distribution_tab(self):
+        layout = QVBoxLayout()
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        platform_series = df['platforms'].dropna().apply(lambda x: x.split('||'))
+        exploded_platforms = platform_series.explode()
+
+        platform_counts = exploded_platforms.value_counts().sort_values(ascending=False).head(20)  # Top 20 platforms
+
+        platform_counts.plot(kind='bar', ax=ax, color='skyblue')
+        ax.set_title("Number of Games per Platform")
+        ax.set_xlabel("Platform")
+        ax.set_ylabel("Number of Games")
+        ax.tick_params(axis='x', rotation=45)
+
+        canvas = FigureCanvas(fig)
+        layout.addWidget(canvas)
+        self.playtime_distribution_tab.setLayout(layout)
+
 
     def init_feature_tab(self):
         layout = QVBoxLayout()
